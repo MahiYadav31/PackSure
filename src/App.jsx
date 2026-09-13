@@ -24,6 +24,14 @@ function App() {
   })
 
   const [compliance, setCompliance] = useState(null)
+  const [activePage, setActivePage] = useState("inspect")
+  const [history, setHistory] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("packsure_history") || "[]")
+    } catch {
+      return []
+    }
+  })
 
   // ---------------- CAMERA ----------------
 
@@ -127,6 +135,7 @@ function App() {
       })
 
       setCompliance(complianceResult)
+      saveHistory(extracted, complianceResult)
       setScanning(false)
       setScanned(true)
 
@@ -353,6 +362,35 @@ function App() {
     )
   }
 
+  // ---------------- HISTORY + PDF ----------------
+
+  const saveHistory = (extracted, complianceResult) => {
+    const entry = {
+      id: Date.now(),
+      time: new Date().toLocaleString(),
+      manufacturer: extracted.manufacturer || "Unknown manufacturer",
+      quantity: extracted.net_quantity || "Quantity not detected",
+      mrp: extracted.mrp || "MRP not detected",
+      status: complianceResult?.overall_status || "NEEDS REVIEW",
+      summary: complianceResult?.overall_message || "Inspection completed.",
+    }
+
+    setHistory((previous) => {
+      const updated = [entry, ...previous].slice(0, 20)
+      localStorage.setItem("packsure_history", JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  const clearHistory = () => {
+    localStorage.removeItem("packsure_history")
+    setHistory([])
+  }
+
+  const generatePDF = () => {
+    window.print()
+  }
+
   // ---------------- RENDER ----------------
 
   return (
@@ -375,9 +413,24 @@ function App() {
         </div>
 
         <nav className="nav">
-          <button>Inspect</button>
-          <button>History</button>
-          <button>Rules</button>
+          <button
+            className={activePage === "inspect" ? "active" : ""}
+            onClick={() => setActivePage("inspect")}
+          >
+            Inspect
+          </button>
+          <button
+            className={activePage === "history" ? "active" : ""}
+            onClick={() => setActivePage("history")}
+          >
+            History
+          </button>
+          <button
+            className={activePage === "rules" ? "active" : ""}
+            onClick={() => setActivePage("rules")}
+          >
+            Rules
+          </button>
         </nav>
 
       </header>
@@ -387,9 +440,12 @@ function App() {
 
       <main className="main">
 
-        {/* INTRO */}
+        {activePage === "inspect" ? (
 
-        <section className="intro">
+          <>
+            {/* INTRO */}
+
+            <section className="intro">
 
           <h1>
             Let’s verify this package.
@@ -940,15 +996,141 @@ function App() {
             </div>
 
 
-            <button
-              className="reset-button"
-              onClick={resetInspection}
-            >
-              Inspect Another Package
-            </button>
+            <div className="report-actions">
+              <button
+                className="scan-button"
+                onClick={generatePDF}
+              >
+                Generate PDF Report
+              </button>
+
+              <button
+                className="reset-button"
+                onClick={resetInspection}
+              >
+                Inspect Another Package
+              </button>
+            </div>
 
           </section>
 
+        )}
+
+          </>
+        ) : activePage === "history" ? (
+
+          <section className="details-section">
+            <div className="section-heading">
+              <h2>Inspection History</h2>
+              <span>Previous inspections</span>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="check">
+                <div>
+                  <strong>No inspections yet.</strong>
+                  <p>Your completed package inspections will appear here.</p>
+                </div>
+                <button className="scan-button" onClick={() => setActivePage("inspect")}>
+                  Inspect a Package
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="checks">
+                  {history.map((item) => (
+                    <div className="check passed" key={item.id}>
+                      <span>✓</span>
+                      <div>
+                        <strong>{item.manufacturer}</strong>
+                        <p>{item.quantity} • {item.mrp}</p>
+                        <p>{item.time} • {item.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button className="clear-history" onClick={clearHistory}>
+                  Clear History
+                </button>
+              </>
+            )}
+          </section>
+
+        ) : (
+
+          <section className="details-section">
+            <div className="section-heading">
+              <h2>Legal Metrology Rules</h2>
+              <span>Key declaration checks</span>
+            </div>
+
+            <div className="checks">
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>MRP Declaration</strong>
+                  <p>Checks that the maximum retail price declaration is detected and readable.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Net Quantity</strong>
+                  <p>Checks the declared net quantity of the packaged commodity.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Manufacturer Details</strong>
+                  <p>Checks for the required manufacturer or responsible entity details.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Batch Number</strong>
+                  <p>Checks whether the batch or lot identification is declared.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Manufacturing Date</strong>
+                  <p>Checks for the manufacturing date declaration.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Expiry / Best Before</strong>
+                  <p>Checks the expiry or best-before declaration where applicable.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Consumer Care</strong>
+                  <p>Checks for consumer care/contact information.</p>
+                </div>
+              </div>
+
+              <div className="check">
+                <span>✓</span>
+                <div>
+                  <strong>Character Size & Readability</strong>
+                  <p>Flags cases requiring visual verification of label readability and character size.</p>
+                </div>
+              </div>
+            </div>
+          </section>
         )}
 
       </main>
@@ -958,3 +1140,5 @@ function App() {
 }
 
 export default App
+
+ 
