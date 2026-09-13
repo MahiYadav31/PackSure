@@ -36,6 +36,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://pack-sure-ten.vercel.app",
+        "https://pack-sure-oehmzik06-access1.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
