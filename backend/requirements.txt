@@ -14,3 +14,4 @@ sarvamai==0.1.33
 fastapi
 uvicorn
 python-multipart
+python-dotenv
